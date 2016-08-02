@@ -1,0 +1,284 @@
+
+buildscript {
+    ext.cubaVersion = '6.2.2'
+    repositories {
+        maven {
+            url 'http://repository.haulmont.com:8587/nexus/content/groups/work'
+            credentials {
+                username(rootProject.hasProperty('repoUser') ? rootProject['repoUser'] : 'developer')
+                password(rootProject.hasProperty('repoPass') ? rootProject['repoPass'] : 'Haul2010')
+            }
+        }
+        
+    }
+    dependencies {
+        classpath "com.haulmont.gradle:cuba-plugin:$cubaVersion"
+    }
+}
+
+def globalModule = project(':app-global')
+def coreModule = project(':app-core')
+def guiModule = project(':app-gui')
+def webModule = project(':app-web')
+def webToolkitModule = project(':app-web-toolkit')
+
+def servletApi = 'org.apache.tomcat:tomcat-servlet-api:8.0.26'
+
+
+apply(plugin: 'idea')
+apply(plugin: 'cuba')
+
+cuba {
+    artifact {
+        group = 'com.company.customcomponents'
+        version = '0.1'
+        isSnapshot = true
+    }
+    tomcat {
+        dir = "$project.rootDir/build/tomcat"
+    }
+    ide {
+        copyright = '''Copyright (c) ${today.year} ${project.name}''' // Copyright Notice for IDEA project
+        classComment ='''/**
+ * @author ${USER}
+ */'''
+        
+    }
+}
+
+def hsql = 'org.hsqldb:hsqldb:2.2.9'
+
+configure([globalModule, coreModule, guiModule, webModule, webToolkitModule]) {
+    apply(plugin: 'java')
+    apply(plugin: 'maven')
+    apply(plugin: 'idea')
+    apply(plugin: 'cuba')
+
+    dependencies {
+        testCompile('junit:junit:4.12')
+    }
+
+    task sourceJar(type: Jar) {
+        from file('src')
+        classifier = 'sources'
+    }
+
+    artifacts {
+        archives sourceJar
+    }
+}
+
+configure(globalModule) {
+    dependencies {
+        compile("com.haulmont.cuba:cuba-global:$cubaVersion")
+
+    }
+
+    task enhance(type: CubaEnhancing)
+    
+}
+
+configure(coreModule) {
+
+    configurations {
+        jdbc
+        dbscripts
+    }
+
+    dependencies {
+        compile(globalModule)
+        provided(servletApi)
+        jdbc(hsql)
+        testRuntime(hsql)
+        compile("com.haulmont.cuba:cuba-core:$cubaVersion")
+        testCompile("com.haulmont.cuba:cuba-core-tests:$cubaVersion")
+        testCompile("com.haulmont.cuba:cuba-shared-lib:$cubaVersion")
+        dbscripts("com.haulmont.cuba:cuba-core:$cubaVersion:db@zip")
+
+    }
+
+    task cleanConf(description: 'Cleans up conf directory') << {
+        def dir = new File(cuba.tomcat.dir, '/conf/app-core')
+        if (dir.isDirectory()) {
+            ant.delete(includeemptydirs: true) {
+                fileset(dir: dir, includes: '**/*', excludes: 'local.app.properties')
+            }
+        }
+    }
+
+    task deploy(dependsOn: [assemble, cleanConf], type: CubaDeployment) {
+        appName = 'app-core'
+        appJars('cuba-core', 'cuba-global', 
+                'app-global', 'app-core')
+    }
+
+    task createDb(dependsOn: assembleDbScripts, description: 'Creates local database', type: CubaDbCreation) {
+        dbms = 'hsql'
+        dbmsVersion = 'null'
+        host = 'localhost'
+        dbName = 'customcomponents'
+        dbUser = 'sa'
+        dbPassword = ''
+    }
+
+    task updateDb(dependsOn: assembleDbScripts, description: 'Updates local database', type: CubaDbUpdate) {
+        dbms = 'hsql'
+        dbmsVersion = 'null'
+        host = 'localhost'
+        dbName = 'customcomponents'
+        dbUser = 'sa'
+        dbPassword = ''
+    }
+}
+
+configure(guiModule) {
+    dependencies {
+        compile(globalModule)
+        compile("com.haulmont.cuba:cuba-gui:$cubaVersion")
+        testCompile("com.haulmont.cuba:cuba-client-tests:$cubaVersion")
+
+    }
+
+    task deployConf(type: Copy) {
+        from file('src')
+        include "com/company/customcomponents/**"
+        into "$cuba.tomcat.dir/conf/app"
+    }
+}
+
+configure(webModule) {
+    configurations {
+        webcontent
+        themes
+        
+    }
+
+    dependencies {
+        provided(servletApi)
+        compile(guiModule)
+        compile("com.haulmont.cuba:cuba-web:$cubaVersion")
+        webcontent("com.haulmont.cuba:cuba-web:$cubaVersion:web@zip")
+        testCompile("com.haulmont.cuba:cuba-client-tests:$cubaVersion")
+        compile('org.vaadin.addons:stepper:2.3.0')
+        themes("com.haulmont.cuba:cuba-web-themes:$cubaVersion")
+        provided("com.haulmont.cuba:cuba-web-themes:$cubaVersion")
+        /* Integrate stepper scss */
+        themes("org.vaadin.addons:stepper:2.3.0")
+    }
+
+    task webArchive(type: Zip) {
+        from file('web')
+        classifier = 'web'
+    }
+
+    artifacts {
+        archives webArchive
+    }
+
+    task deployConf(type: Copy) {
+        from file('src')
+        include "com/company/customcomponents/**"
+        into "$cuba.tomcat.dir/conf/app"
+    }
+
+    task clearMessagesCache(type: CubaClearMessagesCache) {
+        appName = 'app'
+    }
+    deployConf.dependsOn clearMessagesCache
+
+    task cleanConf(description: 'Cleans up conf directory') << {
+        def dir = new File(cuba.tomcat.dir, '/conf/app')
+        if (dir.isDirectory()) {
+            ant.delete(includeemptydirs: true) {
+                fileset(dir: dir, includes: '**/*', excludes: 'local.app.properties')
+            }
+        }
+    }
+
+    task deploy(dependsOn: [assemble, cleanConf], type: CubaDeployment) {
+        appName = 'app'
+        appJars('cuba-rest-api', 'cuba-web', 'cuba-global', 'cuba-gui', 'cuba-client', 
+                'app-global', 'app-gui', 'app-web')
+    }
+    task buildScssThemes(type: CubaWebScssThemeCreation)
+    task deployThemes(type: CubaDeployThemeTask, dependsOn: buildScssThemes)
+    assemble.dependsOn buildScssThemes
+}
+
+configure(webToolkitModule) {
+    dependencies {
+        compile(webModule)
+
+        compile("com.haulmont.cuba:cuba-web-toolkit:$cubaVersion")
+        runtime(servletApi)
+
+    }
+
+    task buildWidgetSet(type: CubaWidgetSetBuilding) {
+        widgetSetClass = 'com.company.customcomponents.web.toolkit.ui.AppWidgetSet'
+    }
+    
+    task debugWidgetSet(type: CubaWidgetSetDebug) {
+        widgetSetClass = 'com.company.customcomponents.web.toolkit.ui.AppWidgetSet'
+    } 
+
+    task webArchive(dependsOn: buildWidgetSet, type: Zip) {
+        from file("$buildDir/web")
+        classifier = 'web'
+    }
+
+    artifacts {
+        archives webArchive
+    }
+
+    task deploy(dependsOn: buildWidgetSet) << {
+        delete {
+            "$cuba.tomcat.dir/webapps/app/VAADIN/widgetsets"
+        }
+        copy {
+            from "$buildDir/web"
+            into "$cuba.tomcat.dir/webapps/app"
+            exclude '**/gwt-unitCache/'
+        }
+    }
+}
+
+
+
+
+task undeploy(type: Delete, dependsOn: ':app-web:cleanConf') {
+    delete("$cuba.tomcat.dir/shared")
+    delete("$cuba.tomcat.dir/webapps/app-core")
+    delete("$cuba.tomcat.dir/webapps/app")
+}
+
+task restart(dependsOn: ['stop', ':app-core:deploy', ':app-web:deploy', ':app-web-toolkit:deploy'], description: 'Redeploys applications and restarts local Tomcat') << {
+    ant.waitfor(maxwait: 6, maxwaitunit: 'second', checkevery: 2, checkeveryunit: 'second') {
+        not {
+            socket(server: 'localhost', port: '8787')
+        }
+    }
+    start.execute()
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.13'
+}
+
+apply from: 'extra.gradle'
+
+task jelasticBuildWar(type: CubaWarBuilding) {
+    appHome = '..'
+    webXmlPath = 'modules/web/web/WEB-INF/single-war-web.xml'
+    appProperties = ['cuba.automaticDatabaseUpdate':'true']
+    includeJdbcDriver = true
+    includeContextXml = true
+    hsqlInProcess = true
+}
+
+task jelasticDeployWar(type: CubaJelasticDeploy, dependsOn: jelasticBuildWar) {
+    email = 'stukalov@haulmont.com'
+    password = 'Dkry#il4'
+    hostUrl = 'app.j.layershift.co.uk'
+    environment = 'customcomponents'
+}

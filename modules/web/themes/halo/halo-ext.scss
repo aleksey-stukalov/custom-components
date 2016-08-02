@@ -1,0 +1,25 @@
+@import "../halo/halo";
+@import "../VAADIN/addons/stepper/stepper";
+@import "components/ratingfield/ratingfield";
+
+
+/* Define your theme modifications inside next mixin */
+
+
+@mixin halo-ext {
+    @include halo;
+
+    /*Integrated Vaadin component style*/
+    /* Basic styles for stepper inner text box */
+    @include stepper;
+    .stepper input[type="text"] {
+       @include box-defaults;
+       @include valo-textfield-style;
+       &:focus {
+         @include valo-textfield-focus-style;
+       }
+    }
+
+    /*Integrated GWT component style*/
+    @include ratingfield;
+}

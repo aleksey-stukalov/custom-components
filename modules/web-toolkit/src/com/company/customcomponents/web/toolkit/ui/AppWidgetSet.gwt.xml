@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<module>
+    <inherits name="com.haulmont.cuba.web.toolkit.ui.WidgetSet"/>
+    <!--<set-property name="user.agent" value="safari" />-->
+    <inherits name="org.vaadin.risto.stepper.widgetset.StepperWidgetset"/>
+</module>

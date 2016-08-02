@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  ~ Copyright (c) 2016 customcomponents
+  -->
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+        caption="msg://editCaption"
+        class="com.company.customcomponents.web.product.ProductEdit"
+        datasource="productDs"
+        focusComponent="fieldGroup"
+        messagesPack="com.company.customcomponents.web.product"
+        xmlns:app="http://schemas.company.com/customcomponents/0.1/ui-component.xsd">
+    <dsContext>
+        <datasource id="productDs"
+                    class="com.company.customcomponents.entity.Product"
+                    view="_local"/>
+    </dsContext>
+    <layout expand="windowActions"
+            spacing="true">
+        <groupBox caption="General Info"
+                  width="330px">
+            <fieldGroup id="fieldGroup"
+                        datasource="productDs">
+                <column fieldCaptionWidth="100px"
+                        width="200px">
+                    <field id="name"/>
+                    <field id="inStock"
+                           custom="true"
+                           width="100%"/>
+                    <field id="buyerRating"
+                           custom="true"/>
+                </column>
+            </fieldGroup>
+        </groupBox>
+        <groupBox caption="Discount Range, %"
+                  width="330px">
+            <app:slider id="slider"
+                        width="290px"/>
+            <hbox width="100%">
+                <label id="minDiscount"
+                       align="MIDDLE_LEFT"
+                       datasource="productDs"
+                       property="minDiscount">
+                    <formatter class="com.haulmont.cuba.gui.components.formatters.NumberFormatter"
+                               format="FROM: #&apos;%&apos;"/>
+                </label>
+                <label id="maxDiscount"
+                       align="MIDDLE_RIGHT"
+                       datasource="productDs"
+                       property="maxDiscount">
+                    <formatter class="com.haulmont.cuba.gui.components.formatters.NumberFormatter"
+                               format="TO: #&apos;%&apos;"/>
+                </label>
+            </hbox>
+        </groupBox>
+        <frame id="windowActions"
+               screen="editWindowActions"/>
+    </layout>
+</window>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<components>
+    <component>
+        <name>slider</name>
+        <componentLoader>com.company.customcomponents.gui.xml.layout.loaders.SliderLoader</componentLoader>
+        <class>com.company.customcomponents.web.gui.components.WebSlider</class>
+    </component>
+    <component>
+        <name>stepper</name>
+        <componentLoader>com.company.customcomponents.gui.xml.layout.loaders.StepperLoader</componentLoader>
+        <class>com.company.customcomponents.web.gui.components.WebStepper</class>
+    </component>
+    <component>
+        <name>ratingField</name>
+        <componentLoader>com.company.customcomponents.gui.xml.layout.loaders.RatingFieldLoader</componentLoader>
+        <class>com.company.customcomponents.web.gui.components.WebRatingField</class>
+    </component>
+</components>
